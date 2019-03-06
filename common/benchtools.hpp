@@ -2,7 +2,7 @@
 #include <functional>
 #include <tuple>
 
-inline std::pair<double, double> sample_benchmark(const std::function< double () > &run_benchmark /*all parameters bound*/, const int nruns)
+std::pair<double, double> sample_benchmark(const std::function< double () > &run_benchmark /*all parameters bound*/, const int nruns)
 {
     double times[nruns];
     double mean = 0., err = 0.;

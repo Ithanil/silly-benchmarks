@@ -178,7 +178,7 @@ double sampleCheck(const int nsteps, const int ndim, const double changeThreshol
 
 // --- Benchmark execution ---
 
-inline double benchmark_tracking(const int trackingType /* 1 notrack 2 track 3 check */, const int nsteps, const int ndim, const double changeThreshold) {
+double benchmark_tracking(const int trackingType /* 1 notrack 2 track 3 check */, const int nsteps, const int ndim, const double changeThreshold) {
     Timer timer(1.);
     double obs;
 
@@ -197,15 +197,12 @@ inline double benchmark_tracking(const int trackingType /* 1 notrack 2 track 3 c
     return time;
 }
 
-inline std::pair<double, double> sample_benchmark_tracking(const int trackingType, const int nruns, const int nsteps, const int ndim, const double changeThreshold) {
-    return sample_benchmark([=] { return benchmark_tracking(trackingType, nsteps, ndim, changeThreshold); }, nruns);
-}
 
 void run_single_benchmark(const std::string &label, const int trackingType, const int nruns, const int nsteps, const int ndim, const double changeThreshold) {
     std::pair<double, double> result;
     const double time_scale = 1000000.; //microseconds
 
-    result = sample_benchmark_tracking(trackingType, nruns, nsteps, ndim, changeThreshold);
+    result = sample_benchmark([=] { return benchmark_tracking(trackingType, nsteps, ndim, changeThreshold); }, nruns);
     std::cout << label << ":" << std::setw(std::max(1, 20-static_cast<int>(label.length()))) << std::setfill(' ') << " " << result.first/nsteps*time_scale << " +- " << result.second/nsteps*time_scale << " microseconds" << std::endl;
 }
 

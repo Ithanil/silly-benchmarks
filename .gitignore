@@ -62,3 +62,4 @@ DerivedData
 config.sh
 vgcore*
 *.out
+exe

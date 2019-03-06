@@ -38,7 +38,7 @@ class ObjectWithData
 {
 private:
     int _ndim = 0;
-    double * _data = nullptr ;
+    double * _data = nullptr;
 
 public:
     ~ObjectWithData(){ delete [] _data; }
@@ -56,8 +56,6 @@ public:
             _data[i] = rand()*(1.0 / RAND_MAX);
         }
     }
-
-
 };
 
 // element-wise access loop
@@ -111,7 +109,7 @@ double sumPtrAccumulateConsts(ObjectWithData * testobj) {
 
 // --- Benchmark execution ---
 
-inline double benchmark_tracking(const int accessType /* 1 element-loop, 2 ptr-loop, 3 ptr-accumulate */,
+double benchmark_objdata(const int accessType /* 1 element-loop, 2 ptr-loop, 3 ptr-accumulate */,
                                  const bool useConsts /* use versions with explicit constants */, const int ndim) {
     Timer timer(1.);
     double obs = 0.;
@@ -133,6 +131,7 @@ inline double benchmark_tracking(const int accessType /* 1 element-loop, 2 ptr-l
         break;
     default:
         std::cout << "Invalid accessType (must be 1, 2 or 3)." << std::endl;
+        return 0.;
     }
     const double time = timer.elapsed();
 
@@ -141,17 +140,14 @@ inline double benchmark_tracking(const int accessType /* 1 element-loop, 2 ptr-l
     return time;
 }
 
-inline std::pair<double, double> sample_benchmark_tracking(const int nruns, const int accessType, const bool useConsts, const int ndim) {
-    return sample_benchmark([=] { return benchmark_tracking(accessType, useConsts, ndim); }, nruns);
-}
 
 void run_single_benchmark(const std::string &label, const int nruns, const int accessType, const bool useConsts, const int ndim) {
     std::pair<double, double> result;
-    const double time_scale = 1000000.; //microseconds
+    const double time_scale = 1000000000.; //nanoseconds
 
-    result = sample_benchmark_tracking(nruns, accessType, useConsts, ndim);
+    result = sample_benchmark([=] { return benchmark_objdata(accessType, useConsts, ndim); }, nruns);
     std::cout << std::endl << std::endl;
-    std::cout << label << ":" << std::setw(std::max(1, 20-static_cast<int>(label.length()))) << std::setfill(' ') << " " << result.first/ndim*time_scale << " +- " << result.second/ndim*time_scale << " microseconds" << std::endl << std::endl;
+    std::cout << label << ":" << std::setw(std::max(1, 20-static_cast<int>(label.length()))) << std::setfill(' ') << " " << result.first/ndim*time_scale << " +- " << result.second/ndim*time_scale << " nanoseconds" << std::endl << std::endl;
 }
 
 
@@ -164,12 +160,12 @@ int main () {
     const bool useConsts[2] = {false, true};
 
     std::cout << "=========================================================================================" << std::endl << std::endl;
-    std::cout << "Benchmark results (time per sample):" << std::endl;
+    std::cout << "Benchmark results (time per element):" << std::endl;
 
     // tracking benchmark
     for (int accessType = 1; accessType < 4; ++accessType) {
         for (auto & flag_const : useConsts) {
-            run_single_benchmark("t/step ( type " + std::to_string(accessType) + ", useConsts " + std::to_string(flag_const) + " )", nruns, accessType, flag_const, ndim);
+            run_single_benchmark("t/element ( type " + std::to_string(accessType) + ", useConsts " + std::to_string(flag_const) + " )", nruns, accessType, flag_const, ndim);
         }
     }
     std::cout << "=========================================================================================" << std::endl << std::endl << std::endl;
