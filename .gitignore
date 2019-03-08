@@ -63,3 +63,4 @@ config.sh
 vgcore*
 *.out
 exe
+test
