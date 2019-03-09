@@ -17,22 +17,10 @@ void newPositionNoTrack(const int ndim, double x[], const double changeThreshold
 
 void newPositionTrack(const int ndim, double x[], bool flags_xchanged[], const double changeThreshold)
 {
-    std::fill(flags_xchanged, flags_xchanged+ndim, false);
     for (int i=0; i<ndim; ++i) {
         if (rand()*(1.0 / RAND_MAX) < changeThreshold) {
             x[i] += rand()*(1.0 / RAND_MAX) - 0.5;
             flags_xchanged[i] = true;
-        }
-    }
-}
-
-void newPositionCheck(const int ndim, double xnew[], const double xold[], const double changeThreshold)
-{
-    for (int i=0; i<ndim; ++i) {
-        if (rand()*(1.0 / RAND_MAX) < changeThreshold) {
-            xnew[i] = xold[i] + rand()*(1.0 / RAND_MAX) - 0.5;
-        } else {
-            xnew[i] = xold[i];
         }
     }
 }
@@ -77,7 +65,7 @@ double calcObsCheck(const int ndim, const double xnew[], const double xold[], do
     return obs;
 }
 
-double sampleNoTrack(const int nsteps, const int ndim, const double changeThreshold)
+double sampleNoTrack(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
 {
     double obs = 0.;
     double x[ndim];
@@ -85,12 +73,12 @@ double sampleNoTrack(const int nsteps, const int ndim, const double changeThresh
 
     for (int i=0; i<nsteps; ++i) {
         newPositionNoTrack(ndim, x, changeThreshold);
-        obs += calcObsNoTrack(ndim, x);
+        if (i%nskip == 0) { obs += calcObsNoTrack(ndim, x); }
     }
     return obs;
 }
 
-double sampleTrack(const int nsteps, const int ndim, const double changeThreshold)
+double sampleTrack(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
 {
     double obs = 0.;
     double x[ndim];
@@ -102,12 +90,15 @@ double sampleTrack(const int nsteps, const int ndim, const double changeThreshol
 
     for (int i=0; i<nsteps; ++i) {
         newPositionTrack(ndim, x, flags_xchanged, changeThreshold);
-        obs += calcObsTrack(ndim, x, flags_xchanged, lastObs);
+        if (i%nskip==0) {
+            obs += calcObsTrack(ndim, x, flags_xchanged, lastObs);
+            std::fill(flags_xchanged, flags_xchanged+ndim, false);
+        }
     }
     return obs;
 }
 
-double sampleCheck(const int nsteps, const int ndim, const double changeThreshold)
+double sampleCheck(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
 {
     double obs = 0.;
     auto * xnew = new double[ndim];
@@ -119,9 +110,11 @@ double sampleCheck(const int nsteps, const int ndim, const double changeThreshol
     std::fill(lastObs, lastObs+ndim, 0.);
 
     for (int i=0; i<nsteps; ++i) {
-        newPositionCheck(ndim, xnew, xold, changeThreshold);
-        obs += calcObsCheck(ndim, xnew, xold, lastObs);
-        std::swap(xnew, xold);
+        newPositionNoTrack(ndim, xnew, changeThreshold);
+        if (i%nskip==0) {
+            obs += calcObsCheck(ndim, xnew, xold, lastObs);
+            std::copy(xnew, xnew+ndim, xold);
+        }
     }
     delete [] xold;
     delete [] xnew;

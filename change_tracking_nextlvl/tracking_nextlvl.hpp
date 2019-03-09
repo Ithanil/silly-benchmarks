@@ -1,4 +1,3 @@
-
 #ifndef TRACKING_NEXTLVL_HPP
 #define TRACKING_NEXTLVL_HPP
 
@@ -8,17 +7,27 @@
 
 #include <cmath>
 #include <algorithm>
+#include <vector>
 
-// --- Cascade of functions that implement the bitfield tracking approach ---
+// --- Cascade of functions that perform the bitfield tracking approach ---
 
 template<typename SizeT, typename AllocT>
 void newPositionBitfieldTrack(const int ndim, double x[], OnewayBitfield<SizeT, AllocT> & flags_xchanged, const double changeThreshold)
 {
-    flags_xchanged.reset();
     for (int i=0; i<ndim; ++i) {
         if (rand()*(1.0 / RAND_MAX) < changeThreshold) {
             x[i] += rand()*(1.0 / RAND_MAX) - 0.5;
             flags_xchanged.set(i);
+        }
+    }
+}
+
+void newPositionBoolvecTrack(const int ndim, double x[], std::vector<bool> &flags_xchanged, const double changeThreshold)
+{
+    for (int i=0; i<ndim; ++i) {
+        if (rand()*(1.0 / RAND_MAX) < changeThreshold) {
+            x[i] += rand()*(1.0 / RAND_MAX) - 0.5;
+            flags_xchanged[i] = true;
         }
     }
 }
@@ -28,10 +37,20 @@ template<typename SizeT, typename AllocT>
 double calcObsBitfieldTrack(const int ndim, const double x[], const OnewayBitfield<SizeT, AllocT> & flags_xchanged, double lastObs[])
 {
     double obs = 0.;
-    bool flags[ndim];
-    flags_xchanged.getAll(flags); // slower for small ndim, faster for larger ndim
+    //bool flags[ndim]; // one could alternatively first getAll into these flags
+    //flags_xchanged.getAll(flags);
     for (int i=0; i<ndim; ++i) {
-        if (flags[i]) { lastObs[i] = calcObsElement(x[i]); }
+        if (flags_xchanged.get(i)) { lastObs[i] = calcObsElement(x[i]); }
+        obs += lastObs[i];
+    }
+    return obs;
+}
+
+double calcObsBoolvecTrack(const int ndim, const double x[], const std::vector<bool> & flags_xchanged, double lastObs[])
+{
+    double obs = 0.;
+    for (int i=0; i<ndim; ++i) {
+        if (flags_xchanged[i]) { lastObs[i] = calcObsElement(x[i]); }
         obs += lastObs[i];
     }
     return obs;
@@ -39,7 +58,7 @@ double calcObsBitfieldTrack(const int ndim, const double x[], const OnewayBitfie
 
 
 template<typename SizeT, typename AllocT>
-double sampleBitfieldTrack(const int nsteps, const int ndim, const double changeThreshold)
+double sampleBitfieldTrack(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
 {
     double obs = 0.;
     double x[ndim];
@@ -51,9 +70,31 @@ double sampleBitfieldTrack(const int nsteps, const int ndim, const double change
 
     for (int i=0; i<nsteps; ++i) {
         newPositionBitfieldTrack(ndim, x, flags_xchanged, changeThreshold);
-        obs += calcObsBitfieldTrack(ndim, x, flags_xchanged, lastObs);
+        if (i%nskip == 0) {
+            obs += calcObsBitfieldTrack(ndim, x, flags_xchanged, lastObs);
+            flags_xchanged.reset();
+        }
     }
     return obs;
 }
+
+double sampleBoolvecTrack(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
+{
+    double obs = 0.;
+    double x[ndim] {0.};
+    double lastObs[ndim] {0.};
+    std::vector<bool> flags_xchanged(ndim);
+    std::fill(flags_xchanged.begin(), flags_xchanged.end(), true);
+
+    for (int i=0; i<nsteps; ++i) {
+        newPositionBoolvecTrack(ndim, x, flags_xchanged, changeThreshold);
+        if (i%nskip == 0) {
+            obs += calcObsBoolvecTrack(ndim, x, flags_xchanged, lastObs);
+            std::fill(flags_xchanged.begin(), flags_xchanged.end(), false);
+        }
+    }
+    return obs;
+}
+
 
 #endif
