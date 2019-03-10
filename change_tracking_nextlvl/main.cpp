@@ -17,12 +17,9 @@
 // Next level of change tracking benchmark (see ../change_tracking)
 // This time I went a step further and implemented a one-way bitfield
 // in OnewayBitfield.hpp, which is a dynamically allocated bitfield
-// specialized to support accumulating/merging positive bit flips
-// (starting from all bit 0). Unfortunately, it cannot really show
-// its strength here, because that would require using the fast merge
-// method that OnewayBitfield provides. Anyway, I wanted to know how
-// it performs in this scenario here, compared to either raw boolean array
-// and std::vector<bool> bitfield.
+// specialized to support accumulating/merging positive bit flips (starting
+// from all 0). I wanted to know how it performs in this scenario here,
+// compared to either raw boolean array and std::vector<bool> bitfield.
 //
 // We compare the following approaches (for code see tracking(_nextlvl).hpp):
 // Approach 1 (NoTrack): Just calculate everything on every step
@@ -32,19 +29,15 @@
 // Approach 5:(Bitvector): Like approach 2, but using a std::vector<bool>.
 //
 // The following settings are configured:
-// 10 runs per benchmark, 20000 steps per run.
-// Using walker with 100 dimensions and change
-// thresholds of: 2./ndim = 0.02, 1/2 and 1.
+// 10 runs per benchmark, 10000 steps per run.
+// Using walker with 500 dimensions and change
+// thresholds of: 1./ndim, 5./ndim, 1/2 and 1.
 //
 // Result (GCC 8: g++ -O3 -flto -march=native):
 // On my systems, with the given compilation flags and benchmark settings,
-// approach 4 (8 byte blocks) manages to marginally outperform or match
-// approach 2 in all cases. Approach 3 (1 byte blocks) is typically a bit slower,
-// but both 3 and 4 are always faster than std::vector<bool>. Yay, seems like my
-// implementation isn't too bad! :D
-// Anyway, the gains with OnewayBitfield are probably too marginal to consider
-// using this over raw bools, in MCI. But maybe the fast merge can be used to
-// positive effect there, I'll see.
+// approach 3 / 4 (1 / 8 byte blocks) manage to slightly outperform or match
+// approach 5, the std::vector<bool>, in all cases. Still, the raw bool array
+// remains to be similar or faster than the bitfields.
 
 
 // --- Benchmark execution ---
@@ -87,16 +80,16 @@ void run_single_benchmark(const std::string &label, const int trackingType, cons
 int main () {
     // benchmark settings
     const int nruns = 10;
-    const int nsteps = 20000;
-    const int ndim = 100;
-    const double changeThresholds[3] = {2./ndim, 0.5, 1.};
+    const int nsteps = 10000;
+    const int ndim = 500;
+    const double changeThresholds[4] = {1./ndim, 5./ndim, 0.5, 1.};
 
     std::cout << "=========================================================================================" << std::endl << std::endl;
     std::cout << "Benchmark results (time per sample):" << std::endl;
 
     // tracking benchmark
     for (auto & threshold : changeThresholds) {
-        for (int trackType = 1; trackType < 6; ++trackType) {
+        for (int trackType = 2; trackType < 6; ++trackType) {
             run_single_benchmark("t/step ( type " + std::to_string(trackType) + ", thresh " + std::to_string(threshold) + " )", trackType, nruns, nsteps, ndim, threshold);
         }
     }

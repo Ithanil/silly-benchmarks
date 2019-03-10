@@ -40,6 +40,7 @@ double calcObsBitfieldTrack(const int ndim, const double x[], const OnewayBitfie
     //bool flags[ndim]; // one could alternatively first getAll into these flags
     //flags_xchanged.getAll(flags);
     for (int i=0; i<ndim; ++i) {
+        //if (flags[i]) { lastObs[i] = calcObsElement(x[i]); }
         if (flags_xchanged.get(i)) { lastObs[i] = calcObsElement(x[i]); }
         obs += lastObs[i];
     }
@@ -58,7 +59,7 @@ double calcObsBoolvecTrack(const int ndim, const double x[], const std::vector<b
 
 
 template<typename SizeT, typename AllocT>
-double sampleBitfieldTrack(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
+double sampleBitfieldTrack(const int nsteps, const int ndim, const double changeThreshold)
 {
     double obs = 0.;
     double x[ndim];
@@ -67,31 +68,31 @@ double sampleBitfieldTrack(const int nsteps, const int ndim, const double change
 
     std::fill(x, x+ndim, 0.);
     std::fill(lastObs, lastObs+ndim, 0.);
+    flags_xchanged.setAll();
 
     for (int i=0; i<nsteps; ++i) {
         newPositionBitfieldTrack(ndim, x, flags_xchanged, changeThreshold);
-        if (i%nskip == 0) {
-            obs += calcObsBitfieldTrack(ndim, x, flags_xchanged, lastObs);
-            flags_xchanged.reset();
-        }
+        obs += calcObsBitfieldTrack(ndim, x, flags_xchanged, lastObs);
+        flags_xchanged.reset();
     }
     return obs;
 }
 
-double sampleBoolvecTrack(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
+double sampleBoolvecTrack(const int nsteps, const int ndim, const double changeThreshold)
 {
     double obs = 0.;
-    double x[ndim] {0.};
-    double lastObs[ndim] {0.};
+    double x[ndim];
+    double lastObs[ndim];
     std::vector<bool> flags_xchanged(ndim);
+
+    std::fill(x, x+ndim, 0.);
+    std::fill(lastObs, lastObs+ndim, 0.);
     std::fill(flags_xchanged.begin(), flags_xchanged.end(), true);
 
     for (int i=0; i<nsteps; ++i) {
         newPositionBoolvecTrack(ndim, x, flags_xchanged, changeThreshold);
-        if (i%nskip == 0) {
-            obs += calcObsBoolvecTrack(ndim, x, flags_xchanged, lastObs);
-            std::fill(flags_xchanged.begin(), flags_xchanged.end(), false);
-        }
+        obs += calcObsBoolvecTrack(ndim, x, flags_xchanged, lastObs);
+        std::fill(flags_xchanged.begin(), flags_xchanged.end(), false);
     }
     return obs;
 }

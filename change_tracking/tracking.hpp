@@ -65,7 +65,7 @@ double calcObsCheck(const int ndim, const double xnew[], const double xold[], do
     return obs;
 }
 
-double sampleNoTrack(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
+double sampleNoTrack(const int nsteps, const int ndim, const double changeThreshold)
 {
     double obs = 0.;
     double x[ndim];
@@ -73,12 +73,12 @@ double sampleNoTrack(const int nsteps, const int ndim, const double changeThresh
 
     for (int i=0; i<nsteps; ++i) {
         newPositionNoTrack(ndim, x, changeThreshold);
-        if (i%nskip == 0) { obs += calcObsNoTrack(ndim, x); }
+        obs += calcObsNoTrack(ndim, x);
     }
     return obs;
 }
 
-double sampleTrack(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
+double sampleTrack(const int nsteps, const int ndim, const double changeThreshold)
 {
     double obs = 0.;
     double x[ndim];
@@ -90,15 +90,13 @@ double sampleTrack(const int nsteps, const int ndim, const double changeThreshol
 
     for (int i=0; i<nsteps; ++i) {
         newPositionTrack(ndim, x, flags_xchanged, changeThreshold);
-        if (i%nskip==0) {
-            obs += calcObsTrack(ndim, x, flags_xchanged, lastObs);
-            std::fill(flags_xchanged, flags_xchanged+ndim, false);
-        }
+        obs += calcObsTrack(ndim, x, flags_xchanged, lastObs);
+        std::fill(flags_xchanged, flags_xchanged+ndim, false);
     }
     return obs;
 }
 
-double sampleCheck(const int nsteps, const int ndim, const double changeThreshold, const int nskip = 1)
+double sampleCheck(const int nsteps, const int ndim, const double changeThreshold)
 {
     double obs = 0.;
     auto * xnew = new double[ndim];
@@ -111,10 +109,8 @@ double sampleCheck(const int nsteps, const int ndim, const double changeThreshol
 
     for (int i=0; i<nsteps; ++i) {
         newPositionNoTrack(ndim, xnew, changeThreshold);
-        if (i%nskip==0) {
-            obs += calcObsCheck(ndim, xnew, xold, lastObs);
-            std::copy(xnew, xnew+ndim, xold);
-        }
+        obs += calcObsCheck(ndim, xnew, xold, lastObs);
+        std::copy(xnew, xnew+ndim, xold);
     }
     delete [] xold;
     delete [] xnew;
