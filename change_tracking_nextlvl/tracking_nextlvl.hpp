@@ -1,18 +1,19 @@
 #ifndef TRACKING_NEXTLVL_HPP
 #define TRACKING_NEXTLVL_HPP
 
-#include "OnewayBitfield.hpp"
+#include "../bitsets/OnewayBitset.hpp"
 
 #include "../change_tracking/tracking.hpp"
 
 #include <cmath>
 #include <algorithm>
+#include <numeric>
 #include <vector>
 
-// --- Cascade of functions that perform the bitfield tracking approach ---
+// --- Cascade of functions that perform the bitset tracking approach ---
 
 template<typename SizeT, typename AllocT>
-void newPositionBitfieldTrack(const int ndim, double x[], OnewayBitfield<SizeT, AllocT> & flags_xchanged, const double changeThreshold)
+void newPositionBitsetTrack(const int ndim, double x[], OnewayBitset<SizeT, AllocT> & flags_xchanged, const double changeThreshold)
 {
     for (int i=0; i<ndim; ++i) {
         if (rand()*(1.0 / RAND_MAX) < changeThreshold) {
@@ -34,17 +35,36 @@ void newPositionBoolvecTrack(const int ndim, double x[], std::vector<bool> &flag
 
 
 template<typename SizeT, typename AllocT>
-double calcObsBitfieldTrack(const int ndim, const double x[], const OnewayBitfield<SizeT, AllocT> & flags_xchanged, double lastObs[])
+double calcObsBitsetTrack(const int ndim, const double x[], const OnewayBitset<SizeT, AllocT> & flags_xchanged, double lastObs[])
 {
+    // make use of fast flag-based any()
+    if (flags_xchanged.any()) {
+        double obs = 0.;
+        for (int i=0; i<ndim; ++i) {
+            if (flags_xchanged.get(i)) { lastObs[i] = calcObsElement(x[i]); }
+            obs += lastObs[i];
+        }
+        return obs;
+    }
+    else { return std::accumulate(lastObs, lastObs+ndim, 0.); }
+
+    /* other approach
     double obs = 0.;
-    //bool flags[ndim]; // one could alternatively first getAll into these flags
-    //flags_xchanged.getAll(flags);
-    for (int i=0; i<ndim; ++i) {
-        //if (flags[i]) { lastObs[i] = calcObsElement(x[i]); }
-        if (flags_xchanged.get(i)) { lastObs[i] = calcObsElement(x[i]); }
-        obs += lastObs[i];
+    int idx = 0;
+    int blkidx = 0;
+    unsigned int bitidx = 0; // will only count up 64 max
+    while (idx < ndim) { // we can use tuple based indexing of the bits
+        if (flags_xchanged.get(blkidx, bitidx)) { lastObs[idx] = calcObsElement(x[idx]); }
+        obs += lastObs[idx];
+        ++idx;
+        ++bitidx;
+        if (bitidx >= flags_xchanged.blocksize) {
+            bitidx = 0;
+            ++blkidx;
+        }
     }
     return obs;
+    */
 }
 
 double calcObsBoolvecTrack(const int ndim, const double x[], const std::vector<bool> & flags_xchanged, double lastObs[])
@@ -59,20 +79,20 @@ double calcObsBoolvecTrack(const int ndim, const double x[], const std::vector<b
 
 
 template<typename SizeT, typename AllocT>
-double sampleBitfieldTrack(const int nsteps, const int ndim, const double changeThreshold)
+double sampleBitsetTrack(const int nsteps, const int ndim, const double changeThreshold)
 {
     double obs = 0.;
     double x[ndim];
     double lastObs[ndim];
-    OnewayBitfield<SizeT, AllocT> flags_xchanged(ndim);
+    OnewayBitset<SizeT, AllocT> flags_xchanged(ndim);
 
     std::fill(x, x+ndim, 0.);
     std::fill(lastObs, lastObs+ndim, 0.);
     flags_xchanged.setAll();
 
     for (int i=0; i<nsteps; ++i) {
-        newPositionBitfieldTrack(ndim, x, flags_xchanged, changeThreshold);
-        obs += calcObsBitfieldTrack(ndim, x, flags_xchanged, lastObs);
+        newPositionBitsetTrack(ndim, x, flags_xchanged, changeThreshold);
+        obs += calcObsBitsetTrack(ndim, x, flags_xchanged, lastObs);
         flags_xchanged.reset();
     }
     return obs;

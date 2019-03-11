@@ -1,8 +1,6 @@
-#include "OnewayBitfield.hpp"
-
 #include "tracking_nextlvl.hpp"
-
 #include "../change_tracking/tracking.hpp"
+#include "../bitsets/OnewayBitset.hpp"
 #include "../common/Timer.hpp"
 #include "../common/benchtools.hpp"
 
@@ -15,17 +13,17 @@
 
 
 // Next level of change tracking benchmark (see ../change_tracking)
-// This time I went a step further and implemented a one-way bitfield
-// in OnewayBitfield.hpp, which is a dynamically allocated bitfield
-// specialized to support accumulating/merging positive bit flips (starting
-// from all 0). I wanted to know how it performs in this scenario here,
-// compared to either raw boolean array and std::vector<bool> bitfield.
+// This time I went a step further and implemented a one-way bitset
+// in OnewayBitset.hpp, which is a runtime-sized bitset, specialized
+// to support accumulating/merging only positive bit flips.
+// I wanted to know how it performs in this scenario here, compared to either
+// raw boolean array and std::vector<bool> bitset.
 //
 // We compare the following approaches (for code see tracking(_nextlvl).hpp):
 // Approach 1 (NoTrack): Just calculate everything on every step
 // Approach 2 (Track): Let the xupdate method note down which x it changes (in a raw boolean array).
-// Approach 3 (Bitfield (int8)): Like approach 2, but using a OnewayBitfield with blocks of 1 byte.
-// Approach 4 (Bitfield (int64)): Like approach 3, but using blocks of 8 byte.
+// Approach 3 (Bitset (int8)): Like approach 2, but using a OnewayBitset with blocks of 1 byte.
+// Approach 4 (Bitset (int64)): Like approach 3, but using blocks of 8 byte.
 // Approach 5:(Bitvector): Like approach 2, but using a std::vector<bool>.
 //
 // The following settings are configured:
@@ -37,12 +35,21 @@
 // On my systems, with the given compilation flags and benchmark settings,
 // approach 3 / 4 (1 / 8 byte blocks) manage to slightly outperform or match
 // approach 5, the std::vector<bool>, in all cases. Still, the raw bool array
-// remains to be similar or faster than the bitfields.
-
+// remains to be similar or faster than the bitsets.
+//
+// Note: gcc with -Os or -O2 can produce faster code in some situations,
+// with O2 appearing to potentially be the best choice overall. That is if
+// we exclude gcc -Ofast, which definitely produces the fastest running code.
+//
+// Note 2: With all that said, this here is not a good benchmark to compare
+// the general performance of bitsets. It is very application specific and
+// the measured time contains the time spent on random number generation and
+// the expensive observable, not the bitsets. For a more direct bitset
+// benchmark, see ../bitsets .
 
 // --- Benchmark execution ---
 
-double benchmark_tracking_nextlvl(const int trackingType /* 1 notrack 2 track 3 bitfield track */, const int nsteps, const int ndim, const double changeThreshold) {
+double benchmark_tracking_nextlvl(const int trackingType /* 1 notrack 2 track 3 bitset track */, const int nsteps, const int ndim, const double changeThreshold) {
     Timer timer(1.);
     double obs;
 
@@ -53,9 +60,9 @@ double benchmark_tracking_nextlvl(const int trackingType /* 1 notrack 2 track 3 
     } else if (trackingType == 2) {
         obs = sampleTrack(nsteps, ndim, changeThreshold);
     } else if (trackingType == 3) {
-        obs = sampleBitfieldTrack<size_t, uint8_t>(nsteps, ndim, changeThreshold);
+        obs = sampleBitsetTrack<int, uint8_t>(nsteps, ndim, changeThreshold);
     } else if (trackingType == 4) {
-        obs = sampleBitfieldTrack<size_t, uint64_t>(nsteps, ndim, changeThreshold);
+        obs = sampleBitsetTrack<int, uint64_t>(nsteps, ndim, changeThreshold);
     } else {
         obs = sampleBoolvecTrack(nsteps, ndim, changeThreshold);
     }
@@ -80,8 +87,8 @@ void run_single_benchmark(const std::string &label, const int trackingType, cons
 int main () {
     // benchmark settings
     const int nruns = 10;
-    const int nsteps = 10000;
-    const int ndim = 500;
+    const int nsteps = 5000;
+    const int ndim = 1000;
     const double changeThresholds[4] = {1./ndim, 5./ndim, 0.5, 1.};
 
     std::cout << "=========================================================================================" << std::endl << std::endl;
